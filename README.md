@@ -17,7 +17,7 @@ open the downloadgit.ps1 file then press windows key and right click powershell 
 
 
 # Cloning and making reoi 
-1. run in powershell -  git clone https://github.com/JohnBummit/Twitter_Song_DB.git
+1. run in powershell -  git clone https://github.com/JohnBummit69/Twitter_Song_DB.git
 
 2. run in powershell - ./Twitter_Song_DB/run_script_with_update.ps1
 
