@@ -1,0 +1,27 @@
+export interface MusicEntry {
+  date_created: string;
+  username: string;
+  song_name: string;
+  artist_name: string;
+}
+
+export function convertArrayToJSON(data: any[][]): MusicEntry[] {
+  // Verify headers match expected format
+  const expectedHeaders = ["Timestamp", "username", "song_name", "artist_name"];
+  const headers = data[0];
+  
+  if (!headers.every((h: string, i: number) => h === expectedHeaders[i])) {
+    data[0] = expectedHeaders; // Force correct headers
+  }
+  
+  const rows = data.slice(1);
+
+  return rows
+    .filter(row => row[1] && row[2] && row[3]) // Filter out empty entries
+    .map(row => ({
+      date_created: row[0] || new Date().toISOString(),
+      username: row[1],
+      song_name: row[2],
+      artist_name: row[3]
+    }));
+}
