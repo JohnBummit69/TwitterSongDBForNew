@@ -1,5 +1,6 @@
 
- function uploadToGitHub() {
+//Function to auto update JSON
+function uploadToGitHub() {
     const spreadsheetId = "1PwDUAK_xoLEpQ4-iulutSS29J9qtC7X1PwxwrVra9FU"; // Replace with your spreadsheet ID
     const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
     const sheet = spreadsheet.getActiveSheet();
@@ -9,8 +10,9 @@
     }
 
     const data = sheet.getDataRange().getValues();
+    data[0] = ["Timestamp","username","song_name","artist_name","Bad_artists"]
     const jsonData = JSON.stringify(data);
-
+   
     const GITHUB_USERNAME = "JohnBummit69";
     const GITHUB_REPO = "TwitterSongDB";
     const FILE_NAME = "music_data.json" ; // Name of the file to create/update in the repo
@@ -18,10 +20,10 @@
 
     const urls = [`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${FILE_NAME}`,`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${File_Name2}`]
     
-    const GITHUB_TOKEN = "github_token";
+    const GITHUB_TOKEN = "Githubtoken";
 
-    ;
-   
+    
+    
     
     const headers = {
         Authorization: `token ${GITHUB_TOKEN}`
@@ -61,6 +63,4 @@
   }
   )}
 
-    const response = UrlFetchApp.fetch(url, options);
-    Logger.log(`Response: ${response.getContentText()}`);
-}
+ 
