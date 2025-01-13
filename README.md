@@ -28,3 +28,5 @@ open the downloadgit.ps1 file then press windows key and right click powershell 
 
 
 if you have mac get a REAL OS
+# Running the website
+go into the directory then run - npm install then run cd App\src then run npm dev
