@@ -1,28 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { WordCloud } from './components/WordCloud';
-import { Music, Users, Disc, Upload } from 'lucide-react';
+import { Music, Users, Disc, PlusCircle } from 'lucide-react';
 import { UserAnalysis } from './components/UserAnalysis';
-
-// Try to import the data, but it might fail if the file doesn't exist
-let musicData: Array<{
-  date_created: string;
-  username: string;
-  song: string;
-  artist: string;
-  real_nigga?: string;
-}> = [];
-
-try {
-  musicData = require('./music_datacloud.json');
-} catch (error) {
-  console.warn('Could not load music data JSON file');
-}
-
-type View = 'wordcloud' | 'usernames' | 'songs';
+import type { MusicEntry } from './utils/convertData';
+import musicData from './music_datacloud.json';
 
 function App() {
   const [words, setWords] = useState<Array<{ text: string; value: number }>>([]);
-  const [currentView, setCurrentView] = useState<View>('wordcloud');
+  const [currentView, setCurrentView] = useState<'wordcloud' | 'usernames' | 'songs'>('wordcloud');
   const [scrollPosition, setScrollPosition] = useState(0);
 
   useEffect(() => {
@@ -34,37 +19,23 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (musicData.length === 0) return;
+    // Process songs and artists for word cloud
+    const songCounts = new Map<string, number>();
+    
+    musicData.forEach(entry => {
+      const song = entry.song_name.trim();
+      songCounts.set(song, (songCounts.get(song) || 0) + 1);
+    });
 
-    const processedWords = [...new Set([
-      ...musicData.map(item => item.song),
-      ...musicData.map(item => item.artist)
-    ])].map(text => {
-      const count = musicData.filter(item => 
-        item.song === text || item.artist === text
-      ).length;
-      return {
+    const processedWords = Array.from(songCounts.entries())
+      .map(([text, count]) => ({
         text,
-        value: count * 10
-      };
-    }).sort((a, b) => b.value - a.value);
+        value: count * 20
+      }))
+      .sort((a, b) => b.value - a.value);
 
     setWords(processedWords);
   }, []);
-
-  if (musicData.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md">
-          <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h2 className="text-2xl font-bold mb-4">No Music Data Available</h2>
-          <p className="text-gray-600 mb-4">
-            Please provide the music data JSON file to continue. The file should be named 'music_datacloud.json' and placed in the src directory.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   const renderContent = () => {
     switch (currentView) {
@@ -75,19 +46,26 @@ function App() {
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-2xl font-bold mb-4">Song List</h2>
             <div className="space-y-2">
-              {[...new Set(musicData.map(item => item.song))].map((song, index) => (
-                <div key={index} className="p-3 bg-gray-50 rounded-md hover:bg-gray-100">
-                  <p className="font-medium">{song}</p>
-                  <p className="text-sm text-gray-600">
-                    {musicData.find(item => item.song === song)?.artist}
-                  </p>
-                </div>
-              ))}
+              {Array.from(new Set(musicData.map(item => item.song_name)))
+                .sort()
+                .map((song, index) => (
+                  <div key={index} className="p-3 bg-gray-50 rounded-md hover:bg-gray-100">
+                    <p className="font-medium">{song}</p>
+                    <p className="text-sm text-gray-600">
+                      {musicData.find(item => item.song_name === song)?.artist_name}
+                    </p>
+                  </div>
+                ))}
             </div>
           </div>
         );
       default:
-        return <WordCloud words={words} />;
+        return (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-2xl font-bold mb-4">Most Played Songs</h2>
+            <WordCloud words={words} />
+          </div>
+        );
     }
   };
 
@@ -113,7 +91,7 @@ function App() {
                 }`}
               >
                 <Music size={20} />
-                Word Cloud
+                Popular Songs
               </button>
               <button
                 onClick={() => setCurrentView('usernames')}
@@ -135,8 +113,17 @@ function App() {
                 }`}
               >
                 <Disc size={20} />
-                Songs
+                All Songs
               </button>
+              <a
+                href="https://forms.gle/24tmYVi5r69mkbgf7"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-lg flex items-center gap-2 bg-green-600 text-white hover:bg-green-700 transition-colors"
+              >
+                <PlusCircle size={20} />
+                Submit Song
+              </a>
             </div>
           </div>
         </div>
