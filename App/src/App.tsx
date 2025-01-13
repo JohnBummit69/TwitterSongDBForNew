@@ -3,14 +3,9 @@ import { WordCloud } from './components/WordCloud';
 import { Music, Users, Disc } from 'lucide-react';
 import { UserAnalysis } from './components/UserAnalysis';
 import { MusicEntry } from './utils/convertData';
+import musicDataJson from './music_datacloud.json';
 
-let musicData: MusicEntry[] = [];
-
-try {
-  musicData = require('./music_datacloud.json');
-} catch (error) {
-  console.warn('Could not load music data JSON file');
-}
+const musicData: MusicEntry[] = musicDataJson;
 
 type View = 'wordcloud' | 'usernames' | 'songs';
 
@@ -28,8 +23,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (musicData.length === 0) return;
-
     // Count song frequencies
     const songFrequencies = musicData.reduce((acc, item) => {
       const song = item.song_name.trim();
