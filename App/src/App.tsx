@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { WordCloud } from './components/WordCloud';
-import { Music, Users, Disc } from 'lucide-react';
+import { Music, Users, Disc, PlusCircle } from 'lucide-react';
 import { UserAnalysis } from './components/UserAnalysis';
 import { MusicEntry } from './utils/convertData';
 import musicDataJson from './music_datacloud.json';
@@ -119,6 +119,15 @@ function App() {
                 <Disc size={20} />
                 All Songs
               </button>
+              <a
+                href="https://forms.gle/24tmYVi5r69mkbgf7"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-lg flex items-center gap-2 bg-green-600 text-white hover:bg-green-700 transition-colors"
+              >
+                <PlusCircle size={20} />
+                Submit Song
+              </a>
             </div>
           </div>
         </div>
