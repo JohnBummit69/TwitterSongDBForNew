@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { WordCloud } from './components/WordCloud';
-import { Music, Users, Disc, Upload } from 'lucide-react';
+import { Music, Users, Disc } from 'lucide-react';
 import { UserAnalysis } from './components/UserAnalysis';
+import { MusicEntry } from './utils/convertData';
 
-// Try to import the data, but it might fail if the file doesn't exist
-let musicData: Array<{
-  date_created: string;
-  username: string;
-  song: string;
-  artist: string;
-  real_nigga?: string;
-}> = [];
+let musicData: MusicEntry[] = [];
 
 try {
   musicData = require('./music_datacloud.json');
@@ -51,20 +45,6 @@ function App() {
 
     setWords(processedWords);
   }, []);
-
-  if (musicData.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md">
-          <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h2 className="text-2xl font-bold mb-4">No Music Data Available</h2>
-          <p className="text-gray-600 mb-4">
-            Please provide the music data JSON file to continue. The file should be named 'music_datacloud.json' and placed in the src directory.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   const renderContent = () => {
     switch (currentView) {
