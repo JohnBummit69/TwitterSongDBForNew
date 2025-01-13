@@ -5,7 +5,9 @@ from datetime import datetime, timedelta
 import pandas as pd
 from datetime import datetime
 import os
-
+import gspread
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
 
 
 #import list for non real niggas 
@@ -110,7 +112,7 @@ def parse_and_insert_json(json_file):
         data = json.load(file)
     
     # Convert JSON to a Pandas DataFrame
-    df_columns = ["Timestamp","username","song_name","artist_name"]
+    df_columns = ["Timestamp","username","song_name","artist_name","bad_artist"]
     df = pd.DataFrame(data,columns=df_columns)
     # Drop the first row
     df= df.iloc[1:]
@@ -118,7 +120,8 @@ def parse_and_insert_json(json_file):
     timestamp = datetime.now()
     
     #Bad Rappers
-    bad_rapper(timestamp)
+    
+    bad_rapper(df)
     
     Bad_Artists = conn.execute("Select artist_name from Bad_Rappers group by artist_name having count(*) >=5  ").df()  
     for username in df["username"].dropna().unique():
@@ -134,12 +137,20 @@ def parse_and_insert_json(json_file):
     #Real nigga check
         
     for _, row in df.iterrows():
-        if row["song_name"].lower().strip() in Bad_Artists:
+        song_name = row["song_name"]
+        Timestamp = row["Timestamp"]
+        
+        if not isinstance(song_name,int):
+            row["song_name"].lower().strip()
+       
+            
+        if row["song_name"] in Bad_Artists:
             row["real_nigga?"] = 'N'
         else:   
             row["real_nigga?"] = 'Y'
-        upsert_username(row["Timestamp"], row["username"], row["real_nigga?"])   
-        upsert_song(row["Timestamp"], row["username"],row["song_name"], row["artist_name"])
+        
+        upsert_username(Timestamp, row["username"], row["real_nigga?"])   
+        upsert_song(Timestamp, row["username"],row["song_name"], row["artist_name"])
 
 def format_timestamp(ts):
     try:
@@ -153,10 +164,11 @@ def upsert_username(timestamp, username, real_nigga=None):
 
     
     try:
-        Timestamp = datetime.strptime(timestamp, "%m/%d/%Y %H:%M:%S").strftime("%Y-%m-%d %H:%M:%S")
-        Timestamp_Date = datetime.strptime(Timestamp, "%Y-%m-%d  %H:%M:%S").strftime("%Y-%m-%d")
+        Timestamp = datetime.strptime(timestamp, '%m/%d/%Y %H:%M:%S').strftime('%Y-%m-%d %H:%M:%S')
+        Timestamp_Date = datetime.strptime(timestamp, '%m/%d/%Y %H:%M:%S').strftime('%Y-%m-%d')
     except Exception as e:
         print(e)
+        Timestamp_Date = timestamp
         pass
     
  
@@ -165,9 +177,9 @@ def upsert_username(timestamp, username, real_nigga=None):
     # Check if the username already exists for the same date
     existing_query = """
     SELECT id FROM usernames
-    WHERE username = ? AND CAST(date_created AS DATE) = ?;
+    WHERE username = ?;
     """
-    existing_id = conn.execute(existing_query, [username, Timestamp_Date]).fetchone()
+    existing_id = conn.execute(existing_query, [username]).fetchone()
    
     #updates db if its a different song
     if existing_id:
@@ -175,12 +187,12 @@ def upsert_username(timestamp, username, real_nigga=None):
         update_query = """
         UPDATE usernames
         SET  
-        "date_created" = ?,
+        
         "real_nigga?" = ?,
         WHERE id = ?;
         """
-        conn.execute(update_query, [Timestamp, real_nigga, existing_id[0]])
-        print(f"Updated: {username} for date {Timestamp}")
+        conn.execute(update_query, [real_nigga, existing_id[0]])
+        print(f"Updated: {username} for date {timestamp}")
     else:
         # Insert a new row
         insert_query = """
@@ -188,12 +200,13 @@ def upsert_username(timestamp, username, real_nigga=None):
         VALUES (?, ?, ?);
         """
         conn.execute(insert_query, [Timestamp, username, real_nigga])
-        print(f"Inserted: {username} for date {Timestamp}")    
+        print(f"Inserted: {username} for date {timestamp}")    
 
 
 
 def upsert_song(timestamp, username, song, artist):
     # Ensure timestamp is in the correct format
+   
     try:
         formatted_timestamp = datetime.strptime(timestamp, "%m/%d/%Y %H:%M:%S").strftime("%Y-%m-%d %H:%M:%S")
     except ValueError as e:
@@ -237,7 +250,7 @@ def upsert_song(timestamp, username, song, artist):
         conn.execute(insert_query, [formatted_timestamp, username, song, artist])
         print(f"Inserted: {username}'s song '{song}' by {artist} for today ({today_date})\n")
       
-def bad_rapper(timestamp):
+def bad_rapper():
     
     
     insert_query = """
@@ -245,24 +258,129 @@ def bad_rapper(timestamp):
     VALUES (?, ?, ?, );
     """
     bad_rapper  = input("Are there any bad rappers you want to contribute? Y or N \n")
+    
+    username = input("What is your username?\n") 
+    
+    date = datetime.now().strftime("%Y-%m-%d")
+    Date = conn.execute(f"SELECT MAX(cast(date_created as DATE)) from Bad_Rappers where  username = '{username}'").fetchone()
+    Date = Date[0]
+    if Date == date:
+        print("you already submitted, thug")
+        return
     if bad_rapper == "Y":
-        username = input("What is your username?\n") 
-        date = datetime.now()
         bad_art = input("Enter Artist Name:\n")
         conn.execute(insert_query, [date,bad_art,username])
-        print(f"Thank you, {bad_art} was inseerted\n")
+        print(f"Thank you, {bad_art} was inserted\n")
+    else:
+        pass
+
+
+def update_db(json_file):
+    # Load the JSON file
+    with open(json_file,"r") as file:
+        data = json.load(file)
     
+    # Convert JSON to a Pandas DataFrame
+    df_columns = ["Timestamp","username","song_name","artist_name","bad_artist"]
+    df = pd.DataFrame(data,columns=df_columns)
+    # Drop the first row
+    df= df.iloc[1:]
+    def convert_date(ts):
+        try:
+            return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%fZ").strftime('%Y-%m-%d')
+        except ValueError as e:
+            raise ValueError(f"Invalid timestamp format: {ts}. Error: {e}")
+            try:
+                return datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").strftime('%Y-%m-%d')
+            except ValueError as e:
+                raise ValueError(f"Invalid timestamp format: {ts}. Error: {e}")
+                return 0
+    df['date_created'] = df['Timestamp'].apply(convert_date)
+    
+    dfval = conn.execute("Select SUBSTR(cast(s.date_created as STRING),1,10) as date_created,s.date_created  as Timestamp, s.username, s.artist,b.artist_name FROM songs s left join Bad_Rappers b on CAST(b.date_created as DATE) = CAST(b.date_created as DATE) and b.username = s.username UNION SELECT  SUBSTR(cast(b.date_created as STRING),1,10) as date_created,b.date_created  as Timestamp, b.username, s.artist,b.artist_name, FROM Bad_Rappers b left join songs s on CAST(b.date_created as DATE) = CAST(b.date_created as DATE)"  ).df()
+    dfval  = dfval.loc[dfval.groupby(['date_created','username'])['Timestamp'].idxmax()]
+    
+    
+    dfanti = df.merge(dfval, on=['date_created','username'], how='outer')
+    
+    
+    for _, row in dfanti.iterrows():
+        try:
+            Timestampx = format_timestamp(row['Timestamp_x'])
+            Timestamp = Timestampx
+        except TypeError:
+                Timestamp = row['Timestamp_y'].strftime("%m/%d/%Y %H:%M:%S")
+                Artist_name = row['artist']
+        try: 
+            if Timestampx > row['Timestamp_y']:
+                Timestamp = Timestampx
+                Artist_name = row['artist_name_x']
+            else:
+                Timestamp = row['Timestamp_y']
+                Artist_name = row['artist']
+        except TypeError:
+            
+            Artist_name = row['artist_name_x']
+         
+        upsert_song(Timestamp, row['username'], row['song_name'], Artist_name)
+        print("DB Updated")
+        df = conn.execute("Select SUBSTR(cast(s.date_created as STRING),1,10) as date_created,s.date_created  as Timestamp, s.username, s.artist,b.artist_name as bad_artist FROM songs s left join Bad_Rappers b on CAST(b.date_created as DATE) = CAST(b.date_created as DATE) and b.username = s.username UNION SELECT  SUBSTR(cast(b.date_created as STRING),1,10) as date_created,b.date_created  as Timestamp, b.username, s.artist,b.artist_name as bad_artist , FROM Bad_Rappers b left join songs s on CAST(b.date_created as DATE) = CAST(b.date_created as DATE) "  ).df()
+        df  = df.loc[df.groupby(['date_created','username'])['Timestamp'].idxmax()]
+        dfjson = df
+        dfjson.to_json(json_file)
+
+
+
+
+
+def Update_spreadsheet(SERVICE_ACCOUNT_FILE):
+   
+    # Authenticate with Google Sheets API
+    credentials = Credentials.from_service_account_file(
+        SERVICE_ACCOUNT_FILE,
+        scopes=["https://www.googleapis.com/auth/spreadsheets"]
+    )
+    client = gspread.authorize(credentials)
+    service = build('sheets', 'v4', credentials=credentials)
+    spreadsheetId = "1PwDUAK_xoLEpQ4-iulutSS29J9qtC7X1PwxwrVra9FU"
+    RANGE = 'Sheet1!'  # Replace 'Sheet1' with your sheet name
+
+    
+
+    # Fetch the rows
+    result = service.spreadsheets().values().get(spreadsheetId=spreadsheetId, range=RANGE).execute()
+    rows = result.get('values', [])
+    
+    # Body of the request
+    body = {
+        'values': values
+    }
+    
+    # Append data
+    result = service.spreadsheets().values().append(
+        spreadsheetId=spreadsheet_ID,
+        range=RANGE,
+        valueInputOption='RAW',  # 'RAW' or 'USER_ENTERED'
+        insertDataOption='INSERT_ROWS',
+        body=body
+    ).execute()
+    
+    print(f"{result.get('updates').get('updatedCells')} cells appended.")
 
 json_file = "music_data.json"
 
 def main():
     
-    parse_and_insert_json(json_file)
+    parse_and_insert_json(json_file,bad_rappers)
 
 
 
 
-#Gets current data into a df
-import duckdb
-conn = duckdb.connect('music.db')
-df = conn.execute().df()
+    #Gets current data into a df
+    import duckdb
+    conn = duckdb.connect('music.db')
+    df = conn.execute("Select s.date_created, s.username, song, artist, u.'real_nigga?' FROM songs s inner join usernames u on u.username = s.username").df()
+    df2 = conn.execute("select * from usernames").df()
+    df2 = df.drop('real_nigga?')
+    df2.to_json('music_datacloud.json', orient="records", indent=4)
+    conn.close()
