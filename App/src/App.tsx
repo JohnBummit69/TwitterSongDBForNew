@@ -30,18 +30,22 @@ function App() {
   useEffect(() => {
     if (musicData.length === 0) return;
 
-    const processedWords = [...new Set([
-      ...musicData.map(item => item.song),
-      ...musicData.map(item => item.artist)
-    ])].map(text => {
-      const count = musicData.filter(item => 
-        item.song === text || item.artist === text
-      ).length;
-      return {
+    // Count song frequencies
+    const songFrequencies = musicData.reduce((acc, item) => {
+      const song = item.song_name.trim();
+      if (song) {
+        acc[song] = (acc[song] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Convert to word cloud format and sort by frequency
+    const processedWords = Object.entries(songFrequencies)
+      .map(([text, count]) => ({
         text,
-        value: count * 10
-      };
-    }).sort((a, b) => b.value - a.value);
+        value: count * 20 // Increased multiplier for better visibility
+      }))
+      .sort((a, b) => b.value - a.value);
 
     setWords(processedWords);
   }, []);
@@ -55,11 +59,11 @@ function App() {
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-2xl font-bold mb-4">Song List</h2>
             <div className="space-y-2">
-              {[...new Set(musicData.map(item => item.song))].map((song, index) => (
+              {[...new Set(musicData.map(item => item.song_name))].map((song, index) => (
                 <div key={index} className="p-3 bg-gray-50 rounded-md hover:bg-gray-100">
                   <p className="font-medium">{song}</p>
                   <p className="text-sm text-gray-600">
-                    {musicData.find(item => item.song === song)?.artist}
+                    {musicData.find(item => item.song_name === song)?.artist_name}
                   </p>
                 </div>
               ))}
@@ -67,7 +71,12 @@ function App() {
           </div>
         );
       default:
-        return <WordCloud words={words} />;
+        return (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-2xl font-bold mb-4">Most Played Songs</h2>
+            <WordCloud words={words} />
+          </div>
+        );
     }
   };
 
@@ -93,7 +102,7 @@ function App() {
                 }`}
               >
                 <Music size={20} />
-                Word Cloud
+                Popular Songs
               </button>
               <button
                 onClick={() => setCurrentView('usernames')}
@@ -115,7 +124,7 @@ function App() {
                 }`}
               >
                 <Disc size={20} />
-                Songs
+                All Songs
               </button>
             </div>
           </div>
